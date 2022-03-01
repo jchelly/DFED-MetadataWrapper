@@ -4,7 +4,7 @@ import unyt
 import h5py
 
 import metadata_wrapper.swift_units
-from metadata_wrapper.read_binary import BinaryDataset
+from metadata_wrapper.read_binary import BinaryDataset, big_or_little
 
 class HDF5MetadataWrapper:
     """
@@ -31,29 +31,34 @@ class HDF5MetadataWrapper:
         """
         
         if isinstance(dataset, BinaryDataset):
+            # Need to be careful in case of non-native endian input data
+            dtype = dataset.dtype
+            if dtype.byteorder != "|":
+                data_endian = big_or_little(dataset.endian)
+                dtype = dataset.dtype.newbyteorder(data_endian)
             # Create a HDF5 external dataset describing the input binary dataset
-            dataset = self.file.create_dataset(name, shape=dataset.shape, dtype=dataset.dtype,
-                                               external=((dataset.fname, dataset.offset, dataset.nbytes),))
+            new_dataset = self.file.create_dataset(name, shape=dataset.shape, dtype=dtype,
+                                                   external=((dataset.fname, dataset.offset, dataset.nbytes),))
         elif isinstance(dataset, h5py.Dataset):
             # Create a HDF5 virtual dataset which gets its data from the input HDF5 dataset
             layout = h5py.VirtualLayout(shape=dataset.shape, dtype=dataset.dtype)
             layout[...] = h5py.VirtualSource(dataset)
-            dataset = self.file.create_virtual_dataset(name, layout)
+            new_dataset = self.file.create_virtual_dataset(name, layout)
         else:
             raise ValueError("Input dataset must be a metadata_wrapper.read_binary.BinaryDataset or a h5py.Dataset")
 
         # Add description, if we have one
         if description is not None:
-            dataset.attrs["Description"] = description
+            new_dataset.attrs["Description"] = description
 
         # Add units, if specified
         if unit is not None:
-            metadata_wrapper.swift_units.write_unit_attributes(dataset, unit, cosmological_factors)
+            metadata_wrapper.swift_units.write_unit_attributes(new_dataset, unit, cosmological_factors)
         
         # Add any additional attributes
         if extra_attributes is not None:
             for name, value in extra_attributes.iter():
-                dataset.attrs[name] = value
+                new_dataset.attrs[name] = value
 
     def close(self):
         if self.file is not None:
