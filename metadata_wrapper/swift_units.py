@@ -20,12 +20,36 @@ def units_from_attributes(dset):
     U_t = dset.attrs["U_t exponent"][0]
     return cgs_factor * (unyt.A**U_I) * (unyt.cm**U_L) * (unyt.g**U_M) * (unyt.K**U_T) * (unyt.s**U_t) 
 
-def cgs_expression(exponents):
+def cgs_expression(exponents, cosmological_factors=None):
+
+    if cosmological_factors is not None:
+        a, a_exponent, h, h_exponent = cosmological_factors
 
     if all([e==0.0 for e in exponents.values()]):
         return "[ - ]"
 
     expression = ""
+
+    if cosmological_factors is not None:
+        # Add a factor
+        if a_exponent == 0:
+            pass
+        elif a_exponent == 1:
+            expression += "a "
+        elif a_exponent.is_integer():
+            expression += ("a^%d " % a_exponent)
+        else:
+            expression += ("a^%7.4f " % a_exponent)
+        # Add h factor
+        if h_exponent == 0:
+            pass
+        elif h_exponent == 1:
+            expression += "h "
+        elif h_exponent.is_integer():
+            expression += ("h^%d " % h_exponent)
+        else:
+            expression += ("h^%7.4f " % h_exponent)
+
     for base_unit, power in exponents.items():
         if power == 0:
             pass
@@ -50,7 +74,11 @@ def cgs_expression(exponents):
     
     return expression
 
-def write_unit_attributes(dset, unit):
+def write_unit_attributes(dset, unit, cosmological_factors):
+
+    # Unpack cosmology parameters
+    if cosmological_factors is not None:
+        a, a_exponent, h, h_exponent = cosmological_factors
 
     # Get conversion to CGS
     cgs_factor = unit.get_conversion_factor(unit.get_cgs_equivalent())[0]
@@ -79,13 +107,19 @@ def write_unit_attributes(dset, unit):
             powers[name] = 0.0
 
     # Find expression for conversion to CGS
-    cgs_expr = cgs_expression(powers)
+    cgs_expr = cgs_expression(powers, cosmological_factors)
 
     # Write attributes to the dataset
     dset.attrs["Expression for physical CGS units"] = cgs_expr
     dset.attrs["Conversion factor to CGS (not including cosmological corrections)"] = [cgs_factor,]
+    if cosmological_factors is not None:
+        physical_cgs_factor = cgs_factor*(a**a_exponent)*(h**h_exponent)
+        dset.attrs["Conversion factor to physical CGS (including cosmological corrections)"] = [physical_cgs_factor,]
     dset.attrs["U_I exponent"] = [powers["U_I"],]
     dset.attrs["U_L exponent"] = [powers["U_L"],]
     dset.attrs["U_M exponent"] = [powers["U_M"],]
     dset.attrs["U_T exponent"] = [powers["U_T"],]
     dset.attrs["U_t exponent"] = [powers["U_t"],]
+    if cosmological_factors is not None:
+        dset.attrs["a-scale exponent"] = (a_exponent,)
+        dset.attrs["h-scale exponent"] = (h_exponent,)

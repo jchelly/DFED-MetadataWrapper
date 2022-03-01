@@ -18,11 +18,16 @@ class HDF5MetadataWrapper:
         self.file = h5py.File(filename, mode)
 
     def add_dataset(self, name, dataset, description=None, unit=None,
-                    extra_attributes=None):
+                    extra_attributes=None, cosmological_factors=None):
         """
         Add a dataset which describes HDF5 or binary data in another file.
         The dataset parameter should be an instance of read_binary.BinaryDataset
         or h5py.Dataset.
+
+        For cosmology simulations, cosmological_factors should be a tuple
+        (a, a_exponent, h, h_exponent) where a is the expansion factor, h is
+        the Hubble parameter, and the exponents indicate the factors of
+        a and h which are included in the units.
         """
         
         if isinstance(dataset, BinaryDataset):
@@ -43,7 +48,7 @@ class HDF5MetadataWrapper:
 
         # Add units, if specified
         if unit is not None:
-            metadata_wrapper.swift_units.write_unit_attributes(dataset, unit)
+            metadata_wrapper.swift_units.write_unit_attributes(dataset, unit, cosmological_factors)
         
         # Add any additional attributes
         if extra_attributes is not None:

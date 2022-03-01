@@ -162,13 +162,18 @@ def wrap_gadget_snapshot(input_file_name, output_file_name):
     GADGET_VELOCITY_UNIT    = unyt.Unit(unyt.km/unyt.s)
     GADGET_TEMPERATURE_UNIT = unyt.Unit(unyt.K)
     GADGET_MASS_UNIT        = unyt.Unit(1.0e10*1.989e33*unyt.g)
+    GADGET_DENSITY_UNIT     = GADGET_MASS_UNIT/(GADGET_LENGTH_UNIT**3)
+    GADGET_ENERGY_UNIT      = GADGET_VELOCITY_UNIT**2
 
-    # For each dataset, provide a description and units
+    # For each dataset, provide a description, units and exponents of expansion factor (a) and Hubble parameter (h)
     gadget_units = {
-        "Coordinates" : (GADGET_LENGTH_UNIT,   "Particle positions in comoving, 1/h units"),
-        "Velocities"  : (GADGET_VELOCITY_UNIT, "Particle velocity 1/sqrt(a) dx/dt"),
-        "ParticleIDs" : (unyt.dimensionless,   "Unique identifier for each particle"),
-        "Masses"      : (GADGET_MASS_UNIT,     "Particle masses in 1/h units"),
+        "Coordinates"     : (GADGET_LENGTH_UNIT,   "Particle positions",                  1.0, -1.0),
+        "Velocities"      : (GADGET_VELOCITY_UNIT, "Particle velocities",                 0.5,  0.0),
+        "ParticleIDs"     : (unyt.dimensionless,   "Unique identifier for each particle", 0.0,  0.0),
+        "Masses"          : (GADGET_MASS_UNIT,     "Particle masses",                     0.0, -1.0),
+        "SmoothingLength" : (GADGET_LENGTH_UNIT,   "Particle smoothing lengths",          1.0, -1.0),
+        "Density"         : (GADGET_DENSITY_UNIT,  "Particle SPH densities",             -3.0,  2.0),
+        "InternalEnergy"  : (GADGET_ENERGY_UNIT,   "Particle internal energies",          0.0,  0.0),
     }
     
     # Open the input file
@@ -181,6 +186,11 @@ def wrap_gadget_snapshot(input_file_name, output_file_name):
     group = outfile.file.create_group("Header")
     for name, value in infile["Header"].attrs.items():
         group.attrs[name] = value
+
+    # Read cosmological factors affecting the units
+    z = infile["Header"].attrs["Redshift"]
+    a = 1.0/(1.0+z)
+    h = infile["Header"].attrs["HubbleParam"]
 
     # Find the number of particles of each type
     npart = infile["Header"].attrs["NumPart_ThisFile"]
@@ -198,16 +208,18 @@ def wrap_gadget_snapshot(input_file_name, output_file_name):
                 
                 # Look up the units for this quantity
                 if dataset_name in gadget_units:
-                    unit, description = gadget_units[dataset_name]
+                    unit, description, a_exponent, h_exponent = gadget_units[dataset_name]
+                    cosmological_factors = (a, a_exponent, h, h_exponent)
                 else:
                     unit = None
                     description = None
+                    cosmological_factors = None
 
                 # Wrap this dataset
                 dataset = infile[group_name][dataset_name]
-                outfile.add_binary_dataset(group_name+"/"+dataset_name, dataset=dataset,
-                                           unit=unit, description=description)
-
+                outfile.add_dataset(group_name+"/"+dataset_name, dataset=dataset,
+                                    unit=unit, description=description,
+                                    cosmological_factors=cosmological_factors)
 
 if __name__ == "__main__":
 
