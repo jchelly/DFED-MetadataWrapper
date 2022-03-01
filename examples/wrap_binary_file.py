@@ -23,19 +23,19 @@ def wrapper_test():
     x.tofile(f)
     f.close()
 
-    # Open the binary file
-    binary_file = TestFile("test.dat")
+    # Open the input binary file
+    input_binary_file = TestFile("test.dat")
     
     # Create the HDF5 wrapper file
-    wrapper = HDF5MetadataWrapper("test.hdf5")
+    wrapper = HDF5MetadataWrapper("wrapped_test_dat.hdf5")
 
     # Open the dataset in the target file to be wrapped
-    dataset = binary_file["test_data"]
+    dataset = input_binary_file["test_data"]
 
     # Add the new dataset to the wrapper file:
     # This creates a HDF5 external dataset that refers to the raw data in the binary file
     # and adds attributes with the description and units following the convention used by SWIFT.
-    wrapper.add_binary_dataset("test_data", dataset, unit=unyt.km/unyt.s, description="Speed in km/s")
+    wrapper.add_dataset("test_data", dataset, unit=unyt.km/unyt.s, description="Speed in km/s")
 
 
 if __name__ == "__main__":

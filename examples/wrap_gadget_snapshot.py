@@ -3,6 +3,7 @@
 import sys
 import re
 import numpy as np
+import unyt
 
 from metadata_wrapper.read_binary import BinaryFile
 from metadata_wrapper.hdf5 import HDF5MetadataWrapper
@@ -155,6 +156,20 @@ def wrap_gadget_snapshot(input_file_name, output_file_name):
     """
     Make a HDF5 wrapper file with metadata for a Gadget binary snapshot
     """
+
+    # System of units assumed in Gadget files, using constants from Gadget-2's allvars.h header
+    GADGET_LENGTH_UNIT      = unyt.Unit(3.085678e24*unyt.cm)
+    GADGET_VELOCITY_UNIT    = unyt.Unit(unyt.km/unyt.s)
+    GADGET_TEMPERATURE_UNIT = unyt.Unit(unyt.K)
+    GADGET_MASS_UNIT        = unyt.Unit(1.0e10*1.989e33*unyt.g)
+
+    # For each dataset, provide a description and units
+    gadget_units = {
+        "Coordinates" : (GADGET_LENGTH_UNIT,   "Particle positions in comoving, 1/h units"),
+        "Velocities"  : (GADGET_VELOCITY_UNIT, "Particle velocity 1/sqrt(a) dx/dt"),
+        "ParticleIDs" : (unyt.dimensionless,   "Unique identifier for each particle"),
+        "Masses"      : (GADGET_MASS_UNIT,     "Particle masses in 1/h units"),
+    }
     
     # Open the input file
     infile = GadgetBinarySnapshotFile(input_file_name)
@@ -180,10 +195,18 @@ def wrap_gadget_snapshot(input_file_name, output_file_name):
 
             # Loop over datasets we have for this particle type
             for dataset_name in infile[group_name]:
+                
+                # Look up the units for this quantity
+                if dataset_name in gadget_units:
+                    unit, description = gadget_units[dataset_name]
+                else:
+                    unit = None
+                    description = None
 
                 # Wrap this dataset
                 dataset = infile[group_name][dataset_name]
-                outfile.add_binary_dataset(group_name+"/"+dataset_name, dataset=dataset)
+                outfile.add_binary_dataset(group_name+"/"+dataset_name, dataset=dataset,
+                                           unit=unit, description=description)
 
 
 if __name__ == "__main__":
