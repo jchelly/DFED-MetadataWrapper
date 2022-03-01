@@ -1,10 +1,9 @@
 #!/bin/env python
 
 import unyt
-import swift_units
-
 import h5py
-import read_binary
+
+import metadata_wrapper.swift_units
 
 class HDF5MetadataWrapper:
     """
@@ -34,7 +33,8 @@ class HDF5MetadataWrapper:
             dataset.attrs["Description"] = description
 
         # Add units, if specified
-        swift_units.write_unit_attributes(dataset, unit)
+        if unit is not None:
+            metadata_wrapper.swift_units.write_unit_attributes(dataset, unit)
         
         # Add any additional attributes
         if extra_attributes is not None:
