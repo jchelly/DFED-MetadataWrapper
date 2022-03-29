@@ -33,7 +33,8 @@ Then, open the target HDF5 file to be wrapped:
 ```
 input_hdf5_file = h5py.File("test.hdf5", "r")
 ```
-Then, for each dataset in the target file call the add_dataset method:
+For each dataset in the target file call the add_dataset method of the wrapper
+file:
 ```
 wrapper.add_dataset(name, dataset, unit, description, extra_attributes=None)
 ```
@@ -69,7 +70,7 @@ to binary files.
 
 The file is assumed to consist of a series of data blocks which can be
 described by specifying their name, data type and shape. To do this, create a
-new class which inherits from BinaryFile and provide an __init__ method which
+new class which inherits from BinaryFile and provide an `__init__` method which
 defines the data blocks in the file by calling the add_dataset method for each
 block in the order the blocks appear in the file.
 
@@ -83,7 +84,7 @@ class TestFile(BinaryFile):
         self.add_dataset(name="array_length", dtype=np.int32, shape=(,))
         # Now that the block has been defined, we can read it
         N = self["array_length"][()]
-        # Define the block with the array data
+        # Define the block with the array data using the length we read in
         self.add_dataset(name="array_data",   dtype=np.int32, shape=(N,))
 ```
 The parameters to add_dataset are:
@@ -110,7 +111,12 @@ and call the add_dataset method to wrap individual datasets:
 wrapper.add_dataset(name, dataset, unit, description, extra_attributes=None)
 ```
 where in this case the `dataset` parameter is an instance of the class derived
-from BinaryFile.
+from BinaryFile. This will produce a HDF5 file containing "external" datasets.
+These are HDF5 datasets where the data is stored in an external binary file.
+
+Note that when reading external datasets it may be necessary to set the
+environment variable `HDF5_EXTFILE_PREFIX=${ORIGIN}` for the data files to be
+located correctly.
 
 See examples/wrap_binary_file.py for a simple example of wrapping a binary file.
 
