@@ -19,10 +19,36 @@ data = sw.load("snap_millennium_063.hdf5", mask=mask)
 
 # Read particle positions
 pos = data.dark_matter.coordinates
+mass = data.dark_matter.masses
 
-# Make a dotplot
-plt.plot(pos[:,0], pos[:,1], "k,", rasterized=True, alpha=0.05)
-plt.gca().set_aspect("equal")
+# Generate smoothing lengths for the dark matter
+from swiftsimio.visualisation.smoothing_length_generation import generate_smoothing_lengths
+data.dark_matter.smoothing_length = generate_smoothing_lengths(
+    data.dark_matter.coordinates,
+    data.metadata.boxsize,
+    kernel_gamma=1.8,
+    neighbours=57,
+    speedup_fac=2,
+    dimension=3,
+)
+
+# Project the dark matter mass
+from swiftsimio.visualisation.projection import project_pixel_grid
+dm_mass = project_pixel_grid(
+    # Note here that we pass in the dark matter dataset not the whole
+    # data object, to specify what particle type we wish to visualise
+    data=data.dark_matter,
+    boxsize=0.1*data.metadata.boxsize,
+    resolution=1024,
+    project="masses",
+    parallel=True,
+    region=None
+)
+
+from matplotlib.pyplot import imshow
+from matplotlib.colors import LogNorm
+imshow(LogNorm()(dm_mass), cmap="inferno", extent=(load_region[0][0], load_region[0][1], load_region[1][0], load_region[1][1]))
 plt.xlabel("x [Mpc/h]")
 plt.ylabel("y [Mpc/h]")
-plt.title("Millennium simulation z=0")
+plt.gca().set_aspect("equal")
+plt.title("Millennium simulation, z=0")

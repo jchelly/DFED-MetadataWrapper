@@ -7,6 +7,7 @@ import h5py
 
 from metadata_wrapper.read_binary import BinaryFile
 from metadata_wrapper.hdf5 import HDF5MetadataWrapper
+from metadata_wrapper.swift_units import write_unit_attributes
 
 class SnapshotFile(BinaryFile):
     """
@@ -102,6 +103,7 @@ def wrap_millennium_snapshot(input_basename, output_basename):
         z = header_data["Redshift"]
         boxsize = header_data["BoxSize"]
         nr_files = header_data["NumFilesPerSnapshot"]
+        particle_mass = header_data["MassTable"][1]
         print(f"Wrapping file {file_nr} of {nr_files}")
 
         # Determine hash table size
@@ -228,7 +230,7 @@ def wrap_millennium_snapshot(input_basename, output_basename):
         # Add system of units
         units = outfile.create_group("Units")
         units.attrs["Unit length in cgs (U_L)"] = (unyt.Mpc.get_conversion_factor(unyt.cm)[0],)
-        units.attrs["Unit mass in cgs (U_M)"]   = (float(unyt.solar_mass.to(unyt.g).value),)
+        units.attrs["Unit mass in cgs (U_M)"]   = (float(unyt.solar_mass.to(unyt.g).value*1.0e10),)
         units.attrs["Unit time in cgs (U_t)"]   = ((unyt.Mpc/unyt.km*unyt.s).get_conversion_factor(unyt.s)[0],)
         units.attrs["Unit temperature in cgs (U_T)"] = (1.0,)
         units.attrs["Unit current in cgs (U_I)"] = (1.0,)
@@ -307,7 +309,7 @@ def wrap_millennium_snapshot(input_basename, output_basename):
     outfile["Header"].attrs["NumPart_ThisFile"] = numpart_thisfile
 
     # Need to update cells:
-    # All cells are now in file 0 and offsets need to be recomputed
+    # All cells are now in file 0 so the offsets need to be recomputed
     outfile["Cells"]["Files"]["PartType1"][...] = 0
     count = outfile["Cells"]["Counts"]["PartType1"][...]
     offset = np.cumsum(count) - count
@@ -337,12 +339,23 @@ def wrap_millennium_snapshot(input_basename, output_basename):
     ids_dset = group.create_virtual_dataset("ParticleIDs", ids_layout)
     for name in ids_attrs:
         ids_dset.attrs[name] = ids_attrs[name]
+
+    # Add a Masses dataset. This isn't present in the original snapshot
+    # because all particles have the same mass. Here we make a chunked
+    # dataset with the fill value set to the particle mass so no storage
+    # needs to be allocated.
+    mass_dset = group.create_dataset("Masses", shape=(total_nr_parts,), dtype=float,
+                                     chunks=(16384,), fillvalue=particle_mass)
+    mass_unit = unyt.Unit(unyt.solar_mass*1.0e10)
+    a_exponent = 0.0
+    h_exponent = -1.0
+    cosmological_factors = (a, a_exponent, h, h_exponent)
+    write_unit_attributes(mass_dset, mass_unit, cosmological_factors)
     outfile.close()
 
 
 if __name__ == "__main__":
     
-    # Full Millennium simulation
     input_basename = "/cosma6/data/dp004/Millennium/Full/snapdir_063/snap_millennium_063"
     output_basename = "/cosma6/data/dp004/jch/wrap_millennium/snap_millennium_063"
 
