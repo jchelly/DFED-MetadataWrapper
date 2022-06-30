@@ -47,7 +47,8 @@ dm_mass = project_pixel_grid(
 
 from matplotlib.pyplot import imshow
 from matplotlib.colors import LogNorm
-imshow(LogNorm()(dm_mass), cmap="inferno", extent=(load_region[0][0], load_region[0][1], load_region[1][0], load_region[1][1]))
+imshow(LogNorm()(dm_mass).T, cmap="inferno", origin="lower",
+       extent=(load_region[0][0], load_region[0][1], load_region[1][0], load_region[1][1]))
 plt.xlabel("x [Mpc/h]")
 plt.ylabel("y [Mpc/h]")
 plt.gca().set_aspect("equal")
