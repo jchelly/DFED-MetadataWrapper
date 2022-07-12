@@ -128,3 +128,18 @@ The file examples/wrap_gadget_snapshot.py contains a more complicated example
 which takes a binary simulation snapshot from the Gadget-2 n-body simulation
 code and wraps it so that it can be read using HDF5 tools and adds attributes
 specifying the units in the file.
+
+### Wrapping the Millennium Simulation
+
+The Millennium Simulation (https://wwwmpa.mpa-garching.mpg.de/galform/virgo/millennium/)
+is a cosmological N-body simulation of a 500Mpc volume using approximately
+10 billion particles. The snapshots are stored in the Fortran unformatted
+binary format used by LGadget-2 and contain big endian data, so bytes swapping
+is needed to read the files on most systems.
+
+The script examples/wrap_millennium.py creates HDF5 wrappers for these binary
+outputs which can be read using swiftsimio python package
+(https://github.com/SWIFTSIM/swiftsimio).
+
+The script read_wrapped_millennium.py shows how to read the snapshots with
+swiftsimio and generate an image of the particle distribution.
