@@ -47,9 +47,11 @@ dm_mass = project_pixel_grid(
 
 from matplotlib.pyplot import imshow
 from matplotlib.colors import LogNorm
+plt.figure(figsize=(8,8))
 imshow(LogNorm()(dm_mass).T, cmap="inferno", origin="lower",
        extent=(load_region[0][0], load_region[0][1], load_region[1][0], load_region[1][1]))
 plt.xlabel("x [Mpc/h]")
 plt.ylabel("y [Mpc/h]")
 plt.gca().set_aspect("equal")
 plt.title("Millennium simulation, z=0")
+plt.savefig("wrapped_millennium.png")
